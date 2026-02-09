@@ -1,47 +1,51 @@
-
-if(process.env.NODE_ENV!="production"){
-   require("dotenv").config();
+if (process.env.NODE_ENV != "production") {
+  require("dotenv").config();
 }
 
-
-const express=require('express');
-const app=express();
-const path=require('path');
-const mongoose=require('mongoose');
-const methodOverride=require('method-override');
-const ejsMate=require('ejs-mate');
-const ExpressError= require("./utils/ExpressError.js");
-const listingRouter=require("./routes/listing.js")
-const reviewRouter=require("./routes/review.js"); 
+const express = require("express");
+const app = express();
+const path = require("path");
+const mongoose = require("mongoose");
+const methodOverride = require("method-override");
+const ejsMate = require("ejs-mate");
+const ExpressError = require("./utils/ExpressError.js");
+const listingRouter = require("./routes/listing.js");
+const reviewRouter = require("./routes/review.js");
 const userRouter = require("./routes/user.js");
 const session = require("express-session");
-const MongoStore=require('connect-mongo');
-const flash=require("connect-flash");
-const passport=require("passport");
-const LocalStrategy=require("passport-local");
-const User=require("./models/user.js");
+const MongoStore = require("connect-mongo");
+const flash = require("connect-flash");
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const User = require("./models/user.js");
 
-const dbUrl= process.env.ATLASDB_URL;
+const dbUrl = process.env.ATLASDB_URL;
 
-main().then(()=>{ 
+// MongoDB connection
+main()
+  .then(() => {
     console.log("connected to DB");
-})
-.catch((err)=>{
+  })
+  .catch((err) => {
     console.log(err);
-});
-async function main(){
-   await mongoose.connect(dbUrl);
+  });
+
+async function main() {
+  await mongoose.connect(dbUrl);
 }
 
+// View engine
 app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "/public")));
 app.use(methodOverride("_method"));
 
-
+// Session store
 const store = MongoStore.create({
   mongoUrl: dbUrl,
   crypto: {
@@ -50,9 +54,9 @@ const store = MongoStore.create({
   touchAfter: 24 * 3600,
 });
 
-store.on("error",()=>{
-  console.log("ERROR in MONGO SESSION STORE",err);
-})
+store.on("error", (err) => {
+  console.log("ERROR in MONGO SESSION STORE", err);
+});
 
 const sessionOptions = {
   store,
@@ -60,97 +64,48 @@ const sessionOptions = {
   resave: false,
   saveUninitialized: true,
   cookie: {
-    expires: Date.now() + 7 * 24 * 60 * 1000,
-    maxAge: 7 * 24 * 60 * 1000,
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
   },
 };
 
-
-// app.get("/", (req, res) => {
-//   res.send("hello");
-// });
-
-
-
-
 app.use(session(sessionOptions));
 app.use(flash());
 
+// Passport
 app.use(passport.initialize());
 app.use(passport.session());
-
-app.use((req, res, next) => {
-  console.log("🔑 req.user =", req.user);
-  next();
-});
-
 
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
-app.use((req,res,next)=>{
-  res.locals.success=req.flash("success") || [];
+// Locals for all templates
+app.use((req, res, next) => {
+  res.locals.success = req.flash("success") || [];
   res.locals.error = req.flash("error") || [];
-  res.locals.currUser=req.user || null;
+  res.locals.currUser = req.user || null;
   next();
 });
 
-// app.get("/demouser",async(req,res)=>{
-//   let fakeUser =new User({
-//     email:"student@gmail.com",
-//     username:"delta-student"
-//   });
-//  let registeredUser=await User.register(fakeUser,"helloworld");
-//  res.send(registeredUser);
-// })
-
-
-
+// Routes
 app.use("/listings", listingRouter);
 app.use("/listings/:id/reviews", reviewRouter);
-app.use  ("/",userRouter)
- 
+app.use("/", userRouter);
 
-
-app.all("*",(req,res,next)=>{
-  next(new ExpressError(404,"Page Not Found"));
+// 404
+app.all("*", (req, res, next) => {
+  next(new ExpressError(404, "Page Not Found"));
 });
 
-app.use((err,req,res,next)=>{
-  let{statusCode=500,message="Something went wrong!"}=err;
+// Error handler
+app.use((err, req, res, next) => {
+  let { statusCode = 500, message = "Something went wrong!" } = err;
   res.status(statusCode).render("error.ejs", { message });
-})
-
-const fetch = require("node-fetch");
-
-app.get("/geocode", async (req, res) => {
-  try {
-    const location = req.query.q;
-    const apiKey = process.env.OPENCAGE_API_KEY;
-
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-      location
-    )}&key=${apiKey}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.results.length) {
-      return res.json({ success: false });
-    }
-
-    const lat = data.results[0].geometry.lat;
-    const lng = data.results[0].geometry.lng;
-
-    res.json({ success: true, lat, lng });
-  } catch (err) {
-    res.json({ success: false });
-  }
 });
 
-
-app.listen(8080,()=>{
+// Server
+app.listen(8080, () => {
   console.log("Server listening......");
-})
+});
