@@ -32,13 +32,15 @@ main().then(()=>{
 async function main(){
    await mongoose.connect(dbUrl);
 }
+
+app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "/public")));
 app.use(methodOverride("_method"));
-app.engine("ejs", ejsMate);
+
 
 const store = MongoStore.create({
   mongoUrl: dbUrl,
@@ -78,14 +80,20 @@ app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use((req, res, next) => {
+  console.log("🔑 req.user =", req.user);
+  next();
+});
+
+
 passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
 app.use((req,res,next)=>{
-  res.locals.success=req.flash("success");
-  res.locals.error = req.flash("error");
-  res.locals.currUser=req.user;
+  res.locals.success=req.flash("success") || [];
+  res.locals.error = req.flash("error") || [];
+  res.locals.currUser=req.user || null;
   next();
 });
 
@@ -114,6 +122,34 @@ app.use((err,req,res,next)=>{
   let{statusCode=500,message="Something went wrong!"}=err;
   res.status(statusCode).render("error.ejs", { message });
 })
+
+const fetch = require("node-fetch");
+
+app.get("/geocode", async (req, res) => {
+  try {
+    const location = req.query.q;
+    const apiKey = process.env.OPENCAGE_API_KEY;
+
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+      location
+    )}&key=${apiKey}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.results.length) {
+      return res.json({ success: false });
+    }
+
+    const lat = data.results[0].geometry.lat;
+    const lng = data.results[0].geometry.lng;
+
+    res.json({ success: true, lat, lng });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
 
 app.listen(8080,()=>{
   console.log("Server listening......");
