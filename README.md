@@ -1,6 +1,6 @@
 # WanderHub
 
-Wanterlust is a web application that serves as a basic version of Airbnb. This platform allows registered users to create, edit, and delete listings, as well as post reviews. The project is built using HTML, CSS, JavaScript, Node.js, Express, and MongoDB, with Cloudinary used for image uploads. The application is deployed on Render, with MongoDB Atlas used for cloud storage.
+WanderHub is a web application that serves as a basic version of Airbnb. This platform allows registered users to create, edit, and delete listings, as well as post reviews. The project is built using HTML, CSS, JavaScript, Node.js, Express, and MongoDB, with Cloudinary used for image uploads. The application is deployed on Render, with MongoDB Atlas used for cloud storage.
 
 ## Features
 
