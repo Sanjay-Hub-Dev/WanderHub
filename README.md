@@ -64,7 +64,7 @@ To run the project locally, follow these steps:
 
 ## Deployment
 
-The live version of the application is available at [Wanterlust on Render](https://wanderhub-awp9.onrender.com/).
+The live version of the application is available at [WanderHub on Render](https://wanderhub-awp9.onrender.com/).
 
 ## Contributing
 
